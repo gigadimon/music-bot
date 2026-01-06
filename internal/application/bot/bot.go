@@ -2,24 +2,32 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/labstack/echo/v4"
 
 	"music-bot-v2/internal/application/config"
 	"music-bot-v2/internal/application/logger"
 )
+
+type Mountable interface {
+	Mount(e *echo.Echo)
+}
 
 type Bot struct {
 	cfg        config.Config
 	handlers   []ext.Handler
 	updater    *ext.Updater
 	dispatcher *ext.Dispatcher
+	server     *http.Server
 }
 
 func New(cfg config.Config, handlers []ext.Handler) (*Bot, error) {
@@ -43,7 +51,7 @@ func New(cfg config.Config, handlers []ext.Handler) (*Bot, error) {
 	}, nil
 }
 
-func (b *Bot) Start(ctx context.Context) error {
+func (b *Bot) Start(ctx context.Context, mountable ...Mountable) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -72,10 +80,14 @@ func (b *Bot) Start(ctx context.Context) error {
 		return err
 	}
 
-	if err := b.updater.StartWebhook(gtgBot, urlPath, ext.WebhookOpts{
-		ListenAddr:  listenAddr,
+	if err := b.updater.AddWebhook(gtgBot, urlPath, &ext.AddWebhookOpts{
 		SecretToken: b.cfg.WebhookSecretToken,
 	}); err != nil {
+		return err
+	}
+
+	if err := b.startWebhookServer(listenAddr, urlPath, mountable...); err != nil {
+		_ = b.updater.Stop()
 		return err
 	}
 
@@ -86,6 +98,8 @@ func (b *Bot) Start(ctx context.Context) error {
 			Timeout: time.Second * time.Duration(b.cfg.RequestTimeoutSec),
 		},
 	}); err != nil {
+		b.shutdownWebhookServer()
+		_ = b.updater.Stop()
 		return err
 	}
 
@@ -101,6 +115,7 @@ func (b *Bot) Start(ctx context.Context) error {
 	var stopOnce sync.Once
 	stop := func() {
 		stopOnce.Do(func() {
+			b.shutdownWebhookServer()
 			stopErr <- b.updater.Stop()
 		})
 	}
@@ -112,6 +127,48 @@ func (b *Bot) Start(ctx context.Context) error {
 	b.updater.Idle()
 	stop()
 	return <-stopErr
+}
+
+func (b *Bot) startWebhookServer(listenAddr string, urlPath string, mountable ...Mountable) error {
+	if b.server != nil {
+		return fmt.Errorf("webhook server already started")
+	}
+
+	e := echo.New()
+	e.POST(urlPath, echo.WrapHandler(b.updater.GetHandlerFunc("/")))
+
+	for _, m := range mountable {
+		m.Mount(e)
+	}
+
+	server := &http.Server{
+		Addr:    listenAddr,
+		Handler: e,
+	}
+	b.server = server
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic("http server failed: " + err.Error())
+		}
+	}()
+
+	return nil
+}
+
+func (b *Bot) shutdownWebhookServer() {
+	if b.server == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := b.server.Shutdown(ctx)
+	if err != nil {
+		log.Printf("failed to shutdown webhook server: %v", err)
+	}
+
+	b.server = nil
 }
 
 func normalizeWebhookPath(path string) (string, error) {

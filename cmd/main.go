@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"music-bot-v2/internal/application/probe"
+
 	"music-bot-v2/internal/yt1s"
 
 	"music-bot-v2/internal/cacher"
@@ -41,7 +43,11 @@ func main() {
 		log.Panicln("failed to create bot: " + err.Error())
 	}
 
-	if err := b.Start(ctx); err != nil {
+	mountable := []bot.Mountable{
+		probe.NewHandler(),
+	}
+
+	if err := b.Start(ctx, mountable...); err != nil {
 		log.Panicln("failed to start bot:", err.Error())
 	}
 }
