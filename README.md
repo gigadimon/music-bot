@@ -20,9 +20,9 @@
 
 ## Google API
 
-| Setting | Variable                     | Default | Example   | Description                                            |
-|---------|------------------------------|---------|-----------|--------------------------------------------------------|
-| API key | CONFIGURATION_GOOGLE_API_KEY | —       | AIzaSy... | Google API access key with Youtube Data API lib access |
+| Setting  | Variable                     | Default | Example                    | Description                                                                          |
+|----------|------------------------------|---------|----------------------------|--------------------------------------------------------------------------------------|
+| API keys | CONFIGURATION_GOOGLE_API_KEY | —       | key1,key2,key3             | Comma-separated keys; first key is used for videos, remaining keys rotate for search |
 
 ## Redis (cache)
 
