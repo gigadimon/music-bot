@@ -2,7 +2,7 @@ package youtube
 
 import "log"
 
-// Кеш file_id аудио по trackID.
+// Cache for audio file_id by trackID.
 func (h *Handler) setAudioFileID(trackID string, fileID string) {
 	if trackID == "" || fileID == "" {
 		return

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Кеш сообщения панели поиска (chatID/messageID) по requester.
+// Cache for the search panel message (chatID/messageID) by requester.
 func (h *Handler) setPanelMessage(requester string, chatID int64, messageID int64) {
 	if requester == "" {
 		return

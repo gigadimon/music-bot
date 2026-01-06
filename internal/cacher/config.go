@@ -7,7 +7,7 @@ var (
 	configMu      sync.RWMutex
 )
 
-// Config описывает настройки Redis для кеша.
+// Config describes Redis cache settings.
 type Config struct {
 	RedisAddr     string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
 	RedisUsername string `env:"REDIS_USERNAME" envDefault:"app"`
@@ -22,7 +22,7 @@ func defaultConfig() Config {
 	}
 }
 
-// SetConfig обновляет глобальную конфигурацию кеша.
+// SetConfig updates the global cache configuration.
 func SetConfig(cfg Config) {
 	configMu.Lock()
 	currentConfig = cfg

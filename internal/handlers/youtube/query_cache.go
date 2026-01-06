@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-// Кеш поискового запроса по requester используемый при переходе между страницами нажатием на кнопки.
+// Cache for a search query by requester, used when paging via button clicks.
 func (h *Handler) setQuery(requester string, query string) {
 	if requester == "" {
 		return
