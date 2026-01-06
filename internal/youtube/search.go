@@ -29,7 +29,7 @@ func (c *Client) Search(ctx context.Context, query string, pageToken string) ([]
 	}
 
 	params := url.Values{}
-	params.Set("key", c.apiKey)
+	params.Set("key", c.nextSearchKey())
 	params.Set("q", query)
 	params.Set("type", "video")
 	params.Set("maxResults", strconv.Itoa(searchMaxResults))

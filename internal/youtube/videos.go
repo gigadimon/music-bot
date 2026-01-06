@@ -21,7 +21,7 @@ func (c *Client) Videos(ctx context.Context, ids []string) (map[string]string, e
 	}
 
 	params := url.Values{}
-	params.Set("key", c.apiKey)
+	params.Set("key", c.videosKey())
 	params.Set("id", strings.Join(ids, ","))
 	params.Set("part", "snippet,contentDetails")
 

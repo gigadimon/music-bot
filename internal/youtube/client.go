@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"strings"
+	"sync"
 
 	"music-bot-v2/internal/application/transport"
 )
@@ -13,20 +14,40 @@ const (
 )
 
 type Client struct {
-	httpClient *transport.Client
-	apiKey     string
-	baseURL    string
+	httpClient    *transport.Client
+	videoAPIKey   string
+	searchKeys    []string
+	searchKeyMu   sync.Mutex
+	searchKeyNext int
+	baseURL       string
 }
 
-func NewClient(apiKey string, httpClient *transport.Client) *Client {
+func NewClient(apiKeys []string, httpClient *transport.Client) *Client {
 	if httpClient == nil {
 		httpClient = transport.New()
 	}
 
+	trimmedKeys := make([]string, 0, len(apiKeys))
+	for _, key := range apiKeys {
+		if strings.TrimSpace(key) != "" {
+			trimmedKeys = append(trimmedKeys, key)
+		}
+	}
+
+	var videoKey string
+	var searchKeys []string
+	if len(trimmedKeys) == 1 {
+		videoKey = trimmedKeys[0]
+	} else if len(trimmedKeys) >= 2 {
+		videoKey = trimmedKeys[0]
+		searchKeys = append(searchKeys, trimmedKeys[1:]...)
+	}
+
 	return &Client{
-		httpClient: httpClient,
-		apiKey:     apiKey,
-		baseURL:    apiV3BaseURL,
+		httpClient:  httpClient,
+		videoAPIKey: videoKey,
+		searchKeys:  searchKeys,
+		baseURL:     apiV3BaseURL,
 	}
 }
 
@@ -45,4 +66,25 @@ func formatAPIError(resp transport.Response, payload *apiErrorPayload) string {
 		}
 	}
 	return resp.Status
+}
+
+func (c *Client) nextSearchKey() string {
+	c.searchKeyMu.Lock()
+	defer c.searchKeyMu.Unlock()
+	if len(c.searchKeys) == 0 {
+		return c.videoAPIKey
+	}
+	key := c.searchKeys[c.searchKeyNext]
+	c.searchKeyNext++
+	if c.searchKeyNext >= len(c.searchKeys) {
+		c.searchKeyNext = 0
+	}
+	return key
+}
+
+func (c *Client) videosKey() string {
+	if c.videoAPIKey != "" {
+		return c.videoAPIKey
+	}
+	return c.nextSearchKey()
 }

@@ -14,7 +14,7 @@ type Config struct {
 	WebhookPath        string        `env:"CONFIGURATION_BOT_WEBHOOK_PATH" envDefault:"/bot"`
 	WebhookListenAddr  string        `env:"CONFIGURATION_BOT_WEBHOOK_LISTEN_ADDR" envDefault:":8080"`
 	WebhookSecretToken string        `env:"CONFIGURATION_BOT_WEBHOOK_SECRET_TOKEN"`
-	GoogleAPIKey       string        `env:"CONFIGURATION_GOOGLE_API_KEY"`
+	GoogleAPIKeys      []string      `env:"CONFIGURATION_GOOGLE_API_KEY" envSeparator:","`
 	Cacher             cacher.Config `envPrefix:"CONFIGURATION_CACHER_"`
 }
 

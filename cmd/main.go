@@ -31,7 +31,7 @@ func main() {
 
 	cacher.SetConfig(cfg.Cacher)
 
-	ytCl := youtube.NewClient(cfg.GoogleAPIKey, nil)
+	ytCl := youtube.NewClient(cfg.GoogleAPIKeys, nil)
 	ytExtrCl := yt1s.NewClient(nil)
 
 	ms := music.NewService(ytCl, ytExtrCl)
