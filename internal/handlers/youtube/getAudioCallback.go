@@ -24,15 +24,30 @@ func (h *Handler) getAudioCallback() handlers.Response {
 			return err
 		}
 
+		fileID := h.getAudioFileID(trackID)
+		if fileID != "" {
+			_, err = b.SendAudioWithContext(h.ctx, ctx.EffectiveChat.Id, gotgbot.InputFileByID(fileID), nil)
+			if err == nil {
+				return answerCallback(h.ctx, b, ctx.CallbackQuery, "")
+			}
+			var tgErr *gotgbot.TelegramError
+			if errors.As(err, &tgErr) && tgErr.Code == 400 {
+				go h.clearAudioFileID(trackID)
+			}
+		}
+
 		link, err := h.music.MP3Link(h.ctx, trackID)
 		if err != nil {
 			_ = answerCallback(h.ctx, b, ctx.CallbackQuery, "Failed to load track.")
 			return err
 		}
 
-		_, err = b.SendAudioWithContext(h.ctx, ctx.EffectiveChat.Id, gotgbot.InputFileByURL(link), nil)
+		message, err := b.SendAudioWithContext(h.ctx, ctx.EffectiveChat.Id, gotgbot.InputFileByURL(link), nil)
 		if err != nil {
 			return err
+		}
+		if message != nil && message.Audio != nil && message.Audio.FileId != "" {
+			go h.setAudioFileID(trackID, message.Audio.FileId)
 		}
 
 		return answerCallback(h.ctx, b, ctx.CallbackQuery, "")
