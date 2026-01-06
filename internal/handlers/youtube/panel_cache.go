@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -12,14 +13,20 @@ func (h *Handler) setPanelMessage(requester string, chatID int64, messageID int6
 		return
 	}
 	value := fmt.Sprintf("%d:%d", chatID, messageID)
-	h.panelCache.Set(requester, value)
+	if err := h.panelCache.Set(h.ctx, requester, value); err != nil {
+		log.Printf("cache set panel requester=%s err=%v", requester, err)
+	}
 }
 
 func (h *Handler) getPanelMessage(requester string) (int64, int64, bool) {
 	if requester == "" {
 		return 0, 0, false
 	}
-	value, ok := h.panelCache.Get(requester)
+	value, ok, err := h.panelCache.Get(h.ctx, requester)
+	if err != nil {
+		log.Printf("cache get panel requester=%s err=%v", requester, err)
+		return 0, 0, false
+	}
 	if !ok || value == "" {
 		return 0, 0, false
 	}
@@ -42,5 +49,7 @@ func (h *Handler) clearPanelMessage(requester string) {
 	if requester == "" {
 		return
 	}
-	h.panelCache.Set(requester, "")
+	if err := h.panelCache.Set(h.ctx, requester, ""); err != nil {
+		log.Printf("cache clear panel requester=%s err=%v", requester, err)
+	}
 }

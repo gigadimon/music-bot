@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"context"
+	"time"
 
 	"music-bot-v2/internal/cacher"
 	"music-bot-v2/internal/music"
@@ -14,20 +15,20 @@ import (
 
 type musicSearcher interface {
 	SearchVideos(ctx context.Context, query string, page int, requester string) ([]music.VideoInfo, int, error)
-	ResetSearchState(requester string)
+	ResetSearchState(ctx context.Context, requester string)
 	MP3Link(ctx context.Context, id string) (string, error)
 }
 
 type cacherService interface {
-	Get(key string) (string, bool)
-	Set(key, value string)
-	DeletePrefix(prefix string)
+	Get(ctx context.Context, key string) (string, bool, error)
+	Set(ctx context.Context, key, value string) error
+	DeletePrefix(ctx context.Context, prefix string) error
 }
 
 type Handler struct {
 	ctx        context.Context
 	music      musicSearcher
-	cache      cacherService
+	queryCache cacherService
 	panelCache cacherService
 	audioCache cacherService
 }
@@ -39,9 +40,9 @@ func NewHandler(ctx context.Context, music musicSearcher) *Handler {
 	return &Handler{
 		ctx:        ctx,
 		music:      music,
-		cache:      cacher.NewInMem(),
-		panelCache: cacher.NewInMem(),
-		audioCache: cacher.NewInMem(),
+		queryCache: cacher.NewRedis(cacher.QueryCacheDB, 0),
+		panelCache: cacher.NewRedis(cacher.PanelCacheDB, 48*time.Hour),
+		audioCache: cacher.NewRedis(cacher.AudioCacheDB, 0),
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"music-bot-v2/internal/yt1s"
 
+	"music-bot-v2/internal/cacher"
 	"music-bot-v2/internal/music"
 	"music-bot-v2/internal/youtube"
 
@@ -25,6 +26,8 @@ func main() {
 	if err != nil {
 		log.Panicln("failed to load config: " + err.Error())
 	}
+
+	cacher.SetConfig(cfg.Cacher)
 
 	ytCl := youtube.NewClient(cfg.GoogleAPIKey, nil)
 	ytExtrCl := yt1s.NewClient(nil)

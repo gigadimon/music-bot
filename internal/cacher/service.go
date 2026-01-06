@@ -1,41 +1,70 @@
 package cacher
 
 import (
-	"strings"
-	"sync"
+	"context"
+	"errors"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-// InMem is a simple in-memory cache with string keys and values.
-type InMem struct {
-	mu   sync.RWMutex
-	data map[string]string
+// Redis is a Redis-backed cache with string keys and values.
+type Redis struct {
+	client *redis.Client
+	ttl    time.Duration
 }
 
-func NewInMem() *InMem {
-	return &InMem{
-		data: make(map[string]string),
+// NewRedis creates new Redis object, ttl=0 means it is never expire.
+func NewRedis(db int, ttl time.Duration) *Redis {
+	cfg := getConfig()
+	return &Redis{
+		ttl: ttl,
+		client: redis.NewClient(&redis.Options{
+			Addr:     cfg.RedisAddr,
+			Username: cfg.RedisUsername,
+			Password: cfg.RedisPassword,
+			DB:       db,
+		}),
 	}
 }
 
-func (c *InMem) Set(key, value string) {
-	c.mu.Lock()
-	c.data[key] = value
-	c.mu.Unlock()
+func (c *Redis) Set(ctx context.Context, key, value string) error {
+	return c.client.Set(ctx, key, value, c.ttl).Err()
 }
 
-func (c *InMem) Get(key string) (string, bool) {
-	c.mu.RLock()
-	value, ok := c.data[key]
-	c.mu.RUnlock()
-	return value, ok
+func (c *Redis) Get(ctx context.Context, key string) (string, bool, error) {
+	value, err := c.client.Get(ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
 }
 
-func (c *InMem) DeletePrefix(prefix string) {
-	c.mu.Lock()
-	for key := range c.data {
-		if strings.HasPrefix(key, prefix) {
-			delete(c.data, key)
+func (c *Redis) DeletePrefix(ctx context.Context, prefix string) error {
+	pattern := prefix + "*"
+	iter := c.client.Scan(ctx, 0, pattern, 100).Iterator()
+
+	const batchSize = 100
+	keys := make([]string, 0, batchSize)
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+		if len(keys) >= batchSize {
+			if err := c.client.Del(ctx, keys...).Err(); err != nil {
+				return err
+			}
+			keys = keys[:0]
 		}
 	}
-	c.mu.Unlock()
+	if len(keys) > 0 {
+		if err := c.client.Del(ctx, keys...).Err(); err != nil {
+			return err
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return err
+	}
+	return nil
 }

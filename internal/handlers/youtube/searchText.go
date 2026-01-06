@@ -37,7 +37,7 @@ func (h *Handler) searchText() handlers.Response {
 		}
 
 		go h.setQuery(requester, query)
-		h.music.ResetSearchState(requester)
+		h.music.ResetSearchState(h.ctx, requester)
 
 		items, total, err := h.music.SearchVideos(h.ctx, query, 0, requester)
 		if err != nil {

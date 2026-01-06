@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_USERNAME: app
+      REDIS_PASSWORD: local-redis-pass
+    ports:
+      - "6379:6379"
+    command:
+      - sh
+      - -c
+      - |
+        cat <<EOF > /tmp/redis.conf
+        bind 0.0.0.0
+        protected-mode yes
+        port 6379
+        appendonly no
+        user default on >$${REDIS_PASSWORD} ~* +@all
+        user $${REDIS_USERNAME} on >$${REDIS_PASSWORD} ~* +@all
+        EOF
+        exec redis-server /tmp/redis.conf
